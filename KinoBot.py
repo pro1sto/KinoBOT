@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types, F
@@ -6,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
 
 # --- 1. НАСТРОЙКИ БОТА ---
-TOKEN = "6560241624:AAEj4WP2lYUaT-Krlx_TEv78l9UHNkgqAyQ"
+TOKEN = os.getenv("BOT_TOKEN")
 
 # Список из 3 каналов: ("Текст на кнопке", "Ссылка для перехода", "ID или @username")
 CHANNELS = [
