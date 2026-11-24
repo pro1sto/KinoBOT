@@ -1,109 +1,169 @@
 import os
 import asyncio
 import logging
+import sqlite3
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
+from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter, TelegramForbiddenError
 
-# --- 1. НАСТРОЙКИ БОТА ---
+# --- 1. НАСТРОЙКИ БОТА (берутся из переменных Bothost) ---
 TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("994444870", 0))
 
-# Список из 3 каналов: ("Текст на кнопке", "Ссылка для перехода", "ID или @username")
 CHANNELS = [
-    ("📢 Канал 1", "https://t.me/+ifqHCgOXu3UzYzhi", "-1004331132151"),
-    ("📢 Канал 2", "https://t.me/+hLg8H8YxhrdlYWFi", "-1002447977734"), # Для закрытых каналов нужен ID
+    ("📢 Канал 1", "https://t.me/+vkpdBtTaBiViNDEy", "-1004331132151"),
+    ("📢 Канал 2", "https://t.me/+hLg8H8YxhrdlYWFi", "-1002447977734"),
 ]
 
-# Ссылка, которую получит пользователь после подписки
-MOVIE_CHANNEL_LINK = "t.me/KINO_HAP5"
-# -------------------------
+MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
+# ---------------------------------------------------------
 
-# Включаем запись логов в консоль, чтобы сразу видеть любые ошибки
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Инициализируем самого бота и диспетчер (мозг бота, который распределяет команды)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
-# --- 2. СОЗДАНИЕ КНОПОК ---
+
+# --- 2. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ ---
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
+
+
+def add_user(user_id: int):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+
+
+def get_all_users() -> list[int]:
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.execute("SELECT user_id FROM users")
+        return [row[0] for row in cursor.fetchall()]
+
+
+def remove_user(user_id: int):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+
+
+# --- 3. КНОПКИ ---
 def get_sub_keyboard() -> InlineKeyboardMarkup:
-    # Создаем список кнопок со ссылками на каналы
     buttons = [
         [InlineKeyboardButton(text=name, url=url)] for name, url, _ in CHANNELS
     ]
-    # Добавляем в самый низ кнопку проверки. callback_data — это скрытый сигнал для бота
     buttons.append([InlineKeyboardButton(text="✅ Проверить подписку", callback_data="check_sub")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-# --- 3. ПРОВЕРКА ПОДПИСКИ ---
+# --- 4. ПРОВЕРКА ПОДПИСКИ ---
 async def is_subscribed(user_id: int) -> bool:
     for _, _, chat_id in CHANNELS:
         try:
-            # Спрашиваем у Telegram статус пользователя в конкретном канале
             member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-            
-            # Если статус 'left' (вышел) или 'kicked' (забанен) — значит не подписан
             if member.status in ["left", "kicked"]:
                 return False
-                
         except TelegramRetryAfter as e:
-            # Защита от лагов: если Telegram просит подождать из-за частых запросов, бот ждет
             await asyncio.sleep(e.retry_after)
             return False
         except Exception as e:
-            # Если бота забыли сделать админом в канале или неверный ID — пишем ошибку в консоль
             logging.error(f"Ошибка при проверке канала {chat_id}: {e}")
             return False
-            
-    # Если цикл прошел все 3 канала и не нашел отписок — возвращаем True (подписан)
     return True
 
 
-# --- 4. ОБРАБОТКА КОМАНДЫ /start ---
+# --- 5. КОМАНДЫ АДМИНИСТРАТОРА ---
+@dp.message(Command("stats"))
+async def stats_cmd(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    users = get_all_users()
+    await message.answer(f"📊 Живых пользователей в базе: **{len(users)}**", parse_mode="Markdown")
+
+
+@dp.message(Command("send"))
+async def send_cmd(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    text_to_send = message.text.replace("/send", "", 1).strip()
+    if not text_to_send:
+        await message.answer(
+            "❗ Напишите текст рассылки после команды.\nПример:\n`/send Вышел новый фильм! Смотри тут: https://t.me`",
+            parse_mode="Markdown"
+        )
+        return
+
+    users = get_all_users()
+    status_msg = await message.answer(f"🚀 Запускаю рассылку по {len(users)} пользователям...")
+
+    success = 0
+    removed = 0
+
+    for uid in users:
+        try:
+            await bot.send_message(chat_id=uid, text=text_to_send)
+            success += 1
+            await asyncio.sleep(0.05)
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after)
+            try:
+                await bot.send_message(chat_id=uid, text=text_to_send)
+                success += 1
+            except Exception:
+                pass
+        except TelegramForbiddenError:
+            remove_user(uid)
+            removed += 1
+        except Exception:
+            pass
+
+    await status_msg.edit_text(
+        f"✅ **Рассылка завершена!**\n"
+        f"📨 Доставлено: **{success}**\n"
+        f"🗑 Очищено заблокировавших: **{removed}**",
+        parse_mode="Markdown"
+    )
+
+
+# --- 6. СТАРТ И ПРОВЕРКА ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    # Сразу проверяем, вдруг человек уже подписан на все каналы
+    add_user(message.from_user.id)
+
     if await is_subscribed(message.from_user.id):
-        await message.answer(
-            f"\nВот твоя ссылка на канал с фильмами: {MOVIE_CHANNEL_LINK}"
-        )
+        await message.answer(f"🎬 Вот твоя ссылка на канал с фильмами: {MOVIE_CHANNEL_LINK}")
     else:
         await message.answer(
-            "🎬 Чтобы получить ссылку на канал с фильмами, подпишись на канала и нажми кнопку проверки:",
+            "🎬 Чтобы получить ссылку на канал с фильмами, подпишись на каналы и нажми кнопку проверки:",
             reply_markup=get_sub_keyboard()
         )
 
 
-# --- 5. ОБРАБОТКА НАЖАТИЯ НА КНОПКУ ПРОВЕРКИ ---
 @dp.callback_query(F.data == "check_sub")
 async def check_callback(callback: types.CallbackQuery):
-    # Проверяем подписку заново
+    add_user(callback.from_user.id)
+
     if await is_subscribed(callback.from_user.id):
         try:
-            # Меняем старое сообщение с кнопками на сообщение со ссылкой (чтобы не засорять чат)
-            await callback.message.edit_text(
-                f"\nВот твоя ссылка на канал с фильмами: {MOVIE_CHANNEL_LINK}"
-            )
+            await callback.message.edit_text(f"🎬 Вот твоя ссылка на канал с фильмами: {MOVIE_CHANNEL_LINK}")
         except TelegramBadRequest:
-            # Защита от ошибки, если пользователь дважды быстро нажал на кнопку
             pass
     else:
-        # Показываем всплывающее окно (alert) прямо поверх экрана, если подписался не на всё
         await callback.answer("❌ Вы подписались не на все каналы! Проверьте еще раз.", show_alert=True)
 
 
-# --- 6. ЗАПУСК БОТА ---
+# --- 7. ЗАПУСК ---
 async def main():
-    # Удаляем старые сообщения, которые прислали боту, пока он был выключен (чтобы не лагал на старте)
+    init_db()
     await bot.delete_webhook(drop_pending_updates=True)
-    # Запускаем бесконечный цикл получения новых сообщений
+    logging.info("Бот запущен и готов к работе!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Бот остановлен вручную.")
+        logging.info("Бот остановлен.")
