@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter, TelegramF
 
 # --- 1. НАСТРОЙКИ БОТА (берутся из переменных Bothost) ---
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("994444870", 0))
+ADMIN_ID = 994444870
 
 CHANNELS = [
     ("📢 Канал 1", "https://t.me/+vkpdBtTaBiViNDEy", "-1004331132151"),
