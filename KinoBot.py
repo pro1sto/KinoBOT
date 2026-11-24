@@ -74,10 +74,6 @@ async def is_subscribed(user_id: int) -> bool:
     return True
 
 # --- 5. КОМАНДЫ АДМИНИСТРАТОРА ---
-@dp.message(Command("id"))
-async def id_cmd(message: types.Message):
-    await message.answer(f"Твой ID: `{message.from_user.id}`\nВ настройках ADMIN_ID: `{ADMIN_ID}`", parse_mode="Markdown")
-
 @dp.message(Command("stats"))
 async def stats_cmd(message: types.Message):
     if message.from_user.id != ADMIN_ID:
