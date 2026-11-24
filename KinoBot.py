@@ -33,6 +33,12 @@ def init_db():
         conn.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
 
 
+def is_old_user(user_id: int) -> bool:
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.execute("SELECT 1 FROM users WHERE user_id = ?", (user_id,))
+        return cursor.fetchone() is not None
+
+
 def add_user(user_id: int):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
@@ -72,6 +78,7 @@ async def is_subscribed(user_id: int) -> bool:
             logging.error(f"Ошибка при проверке канала {chat_id}: {e}")
             return False
     return True
+
 
 # --- 5. КОМАНДЫ АДМИНИСТРАТОРА ---
 @dp.message(Command("stats"))
@@ -130,9 +137,11 @@ async def send_cmd(message: types.Message):
 # --- 6. СТАРТ И ПРОВЕРКА ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    add_user(message.from_user.id)
+    user_id = message.from_user.id
+    already_in_db = is_old_user(user_id)
+    add_user(user_id)
 
-    if await is_subscribed(message.from_user.id):
+    if already_in_db or await is_subscribed(user_id):
         await message.answer(f"🎬 Вот твоя ссылка на канал с фильмами: {MOVIE_CHANNEL_LINK}")
     else:
         await message.answer(
@@ -166,3 +175,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Бот остановлен.")
+
