@@ -1,3 +1,4 @@
+
 import os
 import asyncio
 import logging
@@ -7,18 +8,13 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter, TelegramForbiddenError
 
+# --- 1. НАСТРОЙКИ БОТА (берутся из переменных Bothost) ---
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 994444870
 
-# Каналы с обязательной проверкой подписки
 CHANNELS = [
     ("📢 Канал 1", "https://t.me/+vkpdBtTaBiViNDEy", "-1004331132151"),
     ("📢 Канал 2", "https://t.me/+hLg8H8YxhrdlYWFi", "-1002447977734"),
-]
-
-# Другие боты (без проверки подписки)
-REQUIRED_BOTS = [
-    ("🤖 Канал 3", "https://t.me/SaveInstTTbot"),
 ]
 
 MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
@@ -57,36 +53,12 @@ def remove_user(user_id: int):
 # --- 3. КНОПКИ ---
 def get_sub_keyboard() -> InlineKeyboardMarkup:
     buttons = [
-        [
-            InlineKeyboardButton(
-                text="📢 Канал 1",
-                url="https://t.me/+vkpdBtTaBiViNDEy"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="📢 Канал 2",
-                url="https://t.me/+hLg8H8YxhrdlYWFi"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="🤖 Канал 3",
-                url="https://t.me/SaveInstTTbot"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="✅ Проверить подписку",
-                callback_data="check_sub"
-            )
-        ]
+        [InlineKeyboardButton(text=name, url=url)] for name, url, _ in CHANNELS
     ]
+    buttons.append([InlineKeyboardButton(text="✅ Проверить подписку", callback_data="check_sub")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=buttons
-    )
-  
+
 # --- 4. ПРОВЕРКА ПОДПИСКИ ---
 async def is_subscribed(user_id: int) -> bool:
     for _, _, chat_id in CHANNELS:
@@ -101,6 +73,7 @@ async def is_subscribed(user_id: int) -> bool:
             logging.error(f"Ошибка при проверке канала {chat_id}: {e}")
             return False
     return True
+
 
 # --- 5. КОМАНДЫ АДМИНИСТРАТОРА ---
 @dp.message(Command("stats"))
@@ -190,9 +163,11 @@ async def main():
     logging.info("Бот запущен и готов к работе!")
     await dp.start_polling(bot)
 
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Бот остановлен.")
+
 
