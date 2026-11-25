@@ -20,6 +20,7 @@ CHANNELS = [
 REQUIRED_BOTS = [
     ("🤖 Канал 3", "https://t.me/SaveInstTTbot"),
 ]
+]
 
 MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
 # ---------------------------------------------------------
@@ -58,7 +59,6 @@ def remove_user(user_id: int):
 def get_sub_keyboard() -> InlineKeyboardMarkup:
     buttons = []
 
-    # Каналы
     for name, url, _ in CHANNELS:
         buttons.append([
             InlineKeyboardButton(
@@ -67,7 +67,6 @@ def get_sub_keyboard() -> InlineKeyboardMarkup:
             )
         ])
 
-    # Другие боты (без проверки)
     for name, url in REQUIRED_BOTS:
         buttons.append([
             InlineKeyboardButton(
@@ -76,7 +75,6 @@ def get_sub_keyboard() -> InlineKeyboardMarkup:
             )
         ])
 
-    # Кнопка проверки
     buttons.append([
         InlineKeyboardButton(
             text="✅ Проверить подписку",
@@ -87,7 +85,6 @@ def get_sub_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=buttons
     )
-
 
 # --- 4. ПРОВЕРКА ПОДПИСКИ ---
 async def is_subscribed(user_id: int) -> bool:
