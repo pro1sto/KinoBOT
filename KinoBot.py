@@ -1,3 +1,12 @@
+import os
+import asyncio
+import logging
+import sqlite3
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart, Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter, TelegramForbiddenError
+
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 994444870
 
