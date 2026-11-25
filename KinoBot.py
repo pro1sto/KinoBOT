@@ -1,19 +1,15 @@
-import os
-import asyncio
-import logging
-import sqlite3
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter, TelegramForbiddenError
-
-# --- 1. НАСТРОЙКИ БОТА (берутся из переменных Bothost) ---
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 994444870
 
+# Каналы с обязательной проверкой подписки
 CHANNELS = [
     ("📢 Канал 1", "https://t.me/+vkpdBtTaBiViNDEy", "-1004331132151"),
     ("📢 Канал 2", "https://t.me/+hLg8H8YxhrdlYWFi", "-1002447977734"),
+]
+
+# Другие боты (без проверки подписки)
+REQUIRED_BOTS = [
+    ("🤖 Канал 3", "https://t.me/SaveInstTTbot"),
 ]
 
 MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
@@ -51,11 +47,37 @@ def remove_user(user_id: int):
 
 # --- 3. КНОПКИ ---
 def get_sub_keyboard() -> InlineKeyboardMarkup:
-    buttons = [
-        [InlineKeyboardButton(text=name, url=url)] for name, url, _ in CHANNELS
-    ]
-    buttons.append([InlineKeyboardButton(text="✅ Проверить подписку", callback_data="check_sub")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    buttons = []
+
+    # Каналы
+    for name, url, _ in CHANNELS:
+        buttons.append([
+            InlineKeyboardButton(
+                text=name,
+                url=url
+            )
+        ])
+
+    # Другие боты (без проверки)
+    for name, url in REQUIRED_BOTS:
+        buttons.append([
+            InlineKeyboardButton(
+                text=name,
+                url=url
+            )
+        ])
+
+    # Кнопка проверки
+    buttons.append([
+        InlineKeyboardButton(
+            text="✅ Проверить подписку",
+            callback_data="check_sub"
+        )
+    ])
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=buttons
+    )
 
 
 # --- 4. ПРОВЕРКА ПОДПИСКИ ---
