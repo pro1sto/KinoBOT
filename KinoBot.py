@@ -20,6 +20,7 @@ CHANNELS = [
 REQUIRED_BOTS = [
     ("🤖 Канал 3", "https://t.me/SaveInstTTbot"),
 ]
+print("ДОПОЛНИТЕЛЬНЫЕ БОТЫ:", REQUIRED_BOTS)
 
 MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
 # ---------------------------------------------------------
@@ -56,24 +57,22 @@ def remove_user(user_id: int):
 
 # --- 3. КНОПКИ ---
 def get_sub_keyboard() -> InlineKeyboardMarkup:
+
     buttons = []
 
-    for name, url, _ in CHANNELS:
+    # Первые два канала
+    for name, url, chat_id in CHANNELS:
         buttons.append([
-            InlineKeyboardButton(
-                text=name,
-                url=url
-            )
+            InlineKeyboardButton(text=name, url=url)
         ])
 
+    # Дополнительные боты
     for name, url in REQUIRED_BOTS:
         buttons.append([
-            InlineKeyboardButton(
-                text=name,
-                url=url
-            )
+            InlineKeyboardButton(text=name, url=url)
         ])
 
+    # Проверка подписки
     buttons.append([
         InlineKeyboardButton(
             text="✅ Проверить подписку",
@@ -81,9 +80,10 @@ def get_sub_keyboard() -> InlineKeyboardMarkup:
         )
     ])
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=buttons
-    )
+    print("СОЗДАНО КНОПОК:", len(buttons))
+    print("СПИСОК КНОПОК:", [row[0].text for row in buttons])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 # --- 4. ПРОВЕРКА ПОДПИСКИ ---
 async def is_subscribed(user_id: int) -> bool:
