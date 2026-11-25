@@ -20,7 +20,6 @@ CHANNELS = [
 REQUIRED_BOTS = [
     ("🤖 Канал 3", "https://t.me/SaveInstTTbot"),
 ]
-]
 
 MOVIE_CHANNEL_LINK = "https://t.me/+0eyPhEyL5XFjNmZi"
 # ---------------------------------------------------------
